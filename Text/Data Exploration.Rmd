@@ -1,0 +1,213 @@
+---
+title: "Data Exploration"
+author: "Stuart Barrow"
+date: "Saturday, August 02, 2014"
+output: html_document
+---
+
+This is going to be a running log of the data exploration that I am completing on the Bike sharing Kaggle competion.
+
+Hopefully will make it easier to write up a report on it later if I need to. Could also help me improve my data analysis process.
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library("data.table", lib.loc="~/R/win-library/3.1")
+library("dplyr", lib.loc="~/R/win-library/3.1")
+library("ggplot2", lib.loc="~/R/win-library/3.1")
+library("lubridate", lib.loc="~/R/win-library/3.1")
+library("caret", lib.loc="~/R/win-library/3.1")
+library("stringr", lib.loc="~/R/win-library/3.1")
+
+
+```
+
+
+Load data and get a summary
+```{r}
+setwd("~/R/Kaggle/Bike Sharing/")
+bsData<-read.csv("Data/Raw Data/train.csv")
+summary(bsData)
+```
+
+Plot out some of the data to get a feel of it.
+
+```{r, echo=FALSE}
+ggplot(bsData, aes(count))+geom_histogram(binwidth=10)+ylab("Rentals")+ggtitle("All bike rentals")
+ggplot(bsData, aes(registered))+geom_histogram(binwidth=10)+ylab("Rentals")+ggtitle("All registed rentals")
+ggplot(bsData, aes(casual))+geom_histogram(binwidth=10)+ylab("Rentals")+ggtitle("All casual rentals")
+```
+
+Have a look at the distributions of each continuous input varaible to see how normal they are
+
+```{r, echo=FALSE}
+ggplot(bsData, aes(temp))+geom_histogram(binwidth=0.5)+ggtitle("Temp distribution")
+ggplot(bsData, aes(atemp))+geom_histogram(binwidth=0.5)+ggtitle("Feels like Temp distribution")
+ggplot(bsData, aes(windspeed))+geom_histogram()+ggtitle("wind speed distribution")
+ggplot(bsData, aes(humidity))+geom_histogram(binwidth=1)+ggtitle("humidity distribution")
+
+```
+
+Temp distributions look a bit more normal when split up by season
+```{r,echo=FALSE}
+ggplot(bsData, aes(temp, fill=factor(season)))+geom_density(alpha=0.2)+ggtitle("Temp distribution by season")
+```
+
+**Initial Thoughts**
+
+* I imagine that there will be a stronger relationship between the weather and the number of casual users e.g. Casual users are going to be higher during summer when it is sunnier.
+* There will probably be a strong correlation between the time of day and registered users for commuters.
+* Will probably be hardly any users in the early hours of the morning.
+
+**Next steps**
+
+I will need to split the datetime into date and time so that the ime has more predictive power. Will also allow me to investigate some of my assumptions in the previous section. 
+
+Also want to find a R package that allows for automated splitting of the training set to produce a validation set. I already have a training set provided by Kaggle but I will only use that for submissions.
+
+After some quick googling it loos like the caret package is a good candidate for something that will assist in formalising the model fitting process. Have found a good tutorial. This is what I am going to work on next.
+
+Had a look through Caret tutorial. Found how to partition data set. Going to use 75% split and then try some simple linear regression to see what I have as a base level with no work.
+
+```{r}
+inTraining<-createDataPartition(bsData$count,p=0.75,list=F)
+train<-bsData[inTraining,]
+cv<-bsData[-inTraining,]
+
+```
+
+Did some preliminary modelling. Quickly realised that linear regression will not work as this is a count problem (Can not have negative results). So this means that a poission regression is a good starting point.
+
+**Simple Poisson model**
+
+```{r}
+glmFit1<-glm(count ~ factor(season)+weather,family="poisson",data=train)
+summary(glmFit1)
+new.predict<-predict(glmFit1,newdata=train,type="response")
+plot(new.predict)
+```
+
+**Next steps**
+
+Sort out factors and split up dates.
+
+
+## Sunday, August 03, 2014
+
+
+Changing all of the factors so that they are the correct type.
+
+```{r,results='hide'}
+bsData=data.table(bsData)
+bsData[,season:=factor(season)]
+bsData[,workingday:=factor(workingday)]
+bsData[,weather:=factor(weather)]
+bsData[,holiday:=factor(holiday)]
+```
+
+```{r}
+summary(bsData)
+```
+
+Now need to divide the date time into two different factors. This is important as I think that time of day might have string predictive power.
+```{r,results='hide'}
+dt<-str_split(bsData$datetime, " ")
+date = character()
+time = character()
+for(i in 1:length(dt)){
+date=c(date,dt[[i]][[1]])
+time=c(time,dt[[i]][[2]])
+}
+bsData[,date:=factor(date)]
+bsData[,time:=factor(time)]
+```
+
+```{r}
+summary(bsData)
+```
+
+Now that I have the data split by time I can look at some of my earlier thoughts on the difference between registered and casual users as well inspecting the distribution across the day.
+```{r}
+timeOfDay<-group_by(bsData,time)
+dailyMeans<-summarise(timeOfDay,casual=mean(casual),registered=mean(registered),total=mean(count))
+```
+
+```{r,echo=FALSE}
+ggplot(dailyMeans, aes(x=time,y=casual))+geom_bar(stat="identity")+ggtitle("Hourly Means for Casual Users")
+ggplot(dailyMeans, aes(x=time,y=registered))+geom_bar(stat="identity")+ggtitle("Hourly Means for Registered Users")
+```
+
+The casual users have a pretty normal distribution where as for the registered users you can see the peaks are focussed around commuting times. Both types of users wxperience a lull at night as expected. It is now worth having another go at modelling the data using a poisson distribution.
+
+I have realised that the createDatapartition was not splitting the data as simply as I thought it was: compare these two plots. You can see the training set has been sorted as if there was a factor for an output. This is not idela so I will be resampling the data using a more manual approach.
+
+```{r,echo=FALSE}
+qplot(1:10886,bsData$count)
+qplot(1:8166,train$count)
+```
+
+**Resampling**
+```{r}
+smp_size <- floor(0.75 * nrow(bsData))
+
+set.seed(123)
+inTraining <- sample(seq_len(nrow(bsData)), size = smp_size)
+
+train <- bsData[inTraining, ]
+cv <- bsData[!inTraining, ]
+```
+
+```{r,echo=FALSE}
+qplot(1:10886,bsData$count)
+qplot(1:8164,train$count)
+```
+
+First Poisson Fit
+
+```{r}
+glmFit1<-glm(count ~ season+holiday+workingday+weather+temp+atemp+humidity+windspeed+time,family="poisson",data=train)
+summary(glmFit1)
+```
+
+I will now score this on the cv set using the RMSLE method used in the Kaggle competion.
+
+```{r}
+sqrt(sum((log(predict(glmFit1,newdata = cv,type='response')+1)-log(cv$count+1))^2)/nrow(cv))
+```
+
+According to the kaggle leaderboard the mean value benchmark is 1.58456. So I at least have more prediction power than the average!
+
+I will now create the scripts needed to create the CSV submission and see where I am on the leaderboard! Exciting!
+
+## Monday, August 04, 2014
+
+I have written the scripts to use my model on the test set. I have submitted it Kaggle and got a score of 0.69892. Not far from the score on the cross validation set. That is good as it means I was scoring it correctly. OK now I think kaggle is going to be great for increasing my aptitidude by competing.
+
+My next move with the model is going to be modelling casual and registered users seperately and then adding them together. This should capture the differences between them better.
+
+## Tuesday, August 05,2014
+
+Going to focus on modelling seperately for different types of users.
+
+```{r}
+regFit<-glm(registered ~ season+holiday+workingday+weather+temp+atemp+humidity+windspeed+time,family="poisson",data=train)
+casFit<-glm(casual ~ season+holiday+workingday+weather+temp+atemp+humidity+windspeed+time,family="poisson",data=train)
+count<-predict(regFit,newdata = cv,type='response')+predict(casFit,newdata = cv,type='response')
+sqrt(sum((log(count+1)-log(cv$count+1))^2)/nrow(cv))
+```
+
+This is a slight improvement so I will modify the scripts to see if this improves my kaggle score. I will create a new branch for testing out models.
+
+Scored 0.68008 for an improvement of 10 spaces. I think I will need to change tact on the modelling front to try and improve more drastically. Will research potential models and then use the caret package properly!
+
+Will try using the 'GBM' model first, I saw it mentioned on the kaggle forums. Will have a go at neural networks after that.
+
+Before that though i would like to see what the error is for each hour to see where this model is weak.
+
+```{r}
+errors<-data.table(datetime=cv$datetime,time=cv$time,error=abs(cv$count-count))
+errorsByTime<-group_by(errors,time)
+errors<-summarise(errorsByTime, averageError=mean(error))
+ggplot(errors,aes(time,averageError))+geom_bar(stat="identity")
+
+```
+
+You can see there is still alot of improvements still to be made, especially around the times when people are computing. It may that this model does not weight them enough. Hopedully as I move toward more non-linear models we will see this improved.
