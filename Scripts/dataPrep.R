@@ -9,15 +9,8 @@ dataPrep<- function(rawData){
   rawData[,holiday:=factor(holiday)]
   
   #Split out date time column
-  dt<-str_split(rawData$datetime, " ")
-  date = character()
-  time = character()
-  for(i in 1:length(dt)){
-    date=c(date,dt[[i]][[1]])
-    time=c(time,dt[[i]][[2]])
-  }
-  rawData[,date:=factor(date)]
-  rawData[,time:=factor(time)]
+  rawData[,date:=factor(substr(datetime,1,10))]
+  rawData[,time:=factor(substr(datetime,12,19))]
   
   #return processed data
   rawData
