@@ -2,3 +2,5 @@
 .Rhistory
 .Rdata
 Figures/
+Data/ProcessedData/
+*.html
