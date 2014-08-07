@@ -27,15 +27,21 @@ training[,weather:=NULL,]
 
 fitControl <- trainControl(## 10-fold CV
   method = "repeatedcv",
-  number = 2,verboseIter=T,
+  number =10,verboseIter=T,
   ## repeated ten times
-  repeats = 1)
+  repeats = 3)
+
+gbmGrid <-  expand.grid(interaction.depth = c(1, 3, 5),
+                        n.trees = (1:10)*50,
+                        shrinkage = 0.1)
 
 set.seed(825)
 
 gbmFit1 <- train(count ~ ., data = training,
                  method = "gbm",
                  trControl = fitControl,
+                 tuneGrid=gbmGrid,
                  ## This last option is actually one
                  ## for gbm() that passes through
-                 distribution="poisson")
+                 distribution="gaussian",
+                verbose=F)
