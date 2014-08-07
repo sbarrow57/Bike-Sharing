@@ -10,13 +10,13 @@ This is going to be a running log of the data exploration that I am completing o
 Hopefully will make it easier to write up a report on it later if I need to. Could also help me improve my data analysis process.
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE}
-library("data.table", lib.loc="~/R/win-library/3.1")
-library("dplyr", lib.loc="~/R/win-library/3.1")
-library("ggplot2", lib.loc="~/R/win-library/3.1")
-library("lubridate", lib.loc="~/R/win-library/3.1")
-library("caret", lib.loc="~/R/win-library/3.1")
-library("stringr", lib.loc="~/R/win-library/3.1")
-
+library("data.table")
+library("plyr")
+library("dplyr")
+library("ggplot2")
+library("lubridate")
+library("caret")
+library("stringr")
 
 ```
 
@@ -211,3 +211,30 @@ ggplot(errors,aes(time,averageError))+geom_bar(stat="identity")
 ```
 
 You can see there is still alot of improvements still to be made, especially around the times when people are computing. It may that this model does not weight them enough. Hopedully as I move toward more non-linear models we will see this improved.
+
+## 07/08/14
+
+Starting to look at doing the modelling using more complex models than the GBM package with the use of the caret package.
+
+```{r,echo=FALSE}
+rm(list=ls())
+```
+
+Clearing workspace and reloading the data:
+```{r}
+setwd("~/R/Kaggle/Bike Sharing/")
+bsData<-read.csv("Data/Raw Data/train.csv")
+source("Scripts/dataPrep.R")
+bsData<-dataPrep(bsData)
+
+smp_size <- floor(0.75 * nrow(bsData))
+
+set.seed(123)
+inTraining <- sample(seq_len(nrow(bsData)), size = smp_size)
+
+training <- bsData[inTraining, ]
+cv <- bsData[!inTraining, ]
+
+```
+
+Currently struggling to get GBM working with the Poisson model. Gaussian models are working fine. Might move onto a different model if i can not get it working quickly.
