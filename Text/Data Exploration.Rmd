@@ -238,3 +238,5 @@ cv <- bsData[!inTraining, ]
 ```
 
 Currently struggling to get GBM working with the Poisson model. Gaussian models are working fine. Might move onto a different model if i can not get it working quickly.
+
+Created a gaussian model, was in the process of testing it when R crashed! Lost the model which took hours to process! Oh well, from he graphs it looked like i could tone down some of the parameters without too much loss of predictive power. Will try again.
