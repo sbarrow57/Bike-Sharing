@@ -41,7 +41,7 @@ dummies<-dummyVars(count~.,data=train)
 dummyTest<-dummyVars(~.,data=test)
 
 train<-data.table(predict(dummies,train,na.action=na.omit))
-test<-data.table(predict(dummytest,test,na.action=na.omit))
+test<-data.table(predict(dummyTest,test,na.action=na.omit))
 
 #Create model and predict values
 predictedCount<-predictCount(train,count,test)
