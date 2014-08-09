@@ -2,5 +2,5 @@
 .Rhistory
 .Rdata
 Figures/
-Data/ProcessedData/
+Data/ProcessedData/output.csv
 *.html
