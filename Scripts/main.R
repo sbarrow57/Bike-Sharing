@@ -48,4 +48,4 @@ predictedCount<-predictCount(train,count,test)
 
 #Create output
 output = data.frame(datetime=dt,count=predictedCount)
-write.csv(output,"Data/Processed Data/output.csv",row.names=F)
+write.csv(output,"Data/ProcessedData/output.csv",row.names=F)
