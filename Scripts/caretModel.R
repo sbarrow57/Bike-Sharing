@@ -18,30 +18,28 @@ training[,registered:=NULL]
 training[,date:=NULL]
 training[,weather:=NULL,]
 
-#count<-training$count
+count<-training$count
 
-#dummies<-dummyVars(count~.,data=training)
+dummies<-dummyVars(count~.,data=training)
 
-#training<-data.table(predict(dummies,training,na.action=na.omit))
+training<-data.table(predict(dummies,training,na.action=na.omit))
 #training[,count:=count]
 
 fitControl <- trainControl(## 10-fold CV
   method = "repeatedcv",
   number =10,verboseIter=T,
-  ## repeated ten times
-  repeats = 3)
+  ## no repeats
+  repeats = 1)
 
-gbmGrid <-  expand.grid(interaction.depth = c(1, 3, 5),
-                        n.trees = (1:10)*50,
-                        shrinkage = 0.1)
+rfGrid <-  expand.grid(mtry=(1:5)*4)
 
 set.seed(825)
 
-gbmFit1 <- train(count ~ ., data = training,
-                 method = "gbm",
+rfFit1 <- train(x=training, y=count,
+                 method = "rf",
                  trControl = fitControl,
-                 tuneGrid=gbmGrid,
-                 ## This last option is actually one
-                 ## for gbm() that passes through
-                 distribution="gaussian",
-                verbose=F)
+                 tuneGrid=rfGrid)
+
+crossVal<-data.table(predict(dummies,cv,na.action=na.omit))
+predictedCount<-predict(rfFit1,newdata = crossVal)
+sqrt(sum((log(predictedCount+1)-log(cv$count+1))^2)/nrow(cv))
