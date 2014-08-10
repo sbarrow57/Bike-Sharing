@@ -11,19 +11,19 @@ inTraining <- sample(seq_len(nrow(bsData)), size = smp_size)
 training <- bsData[inTraining, ]
 cv <- bsData[!inTraining, ]
 
-#preprocess
+regCount<-training$registered
+casCount<-training$casual
+
+#preprocess casual data
 training[,datetime:=NULL]
 training[,casual:=NULL]
 training[,registered:=NULL]
 training[,date:=NULL]
-training[,weather:=NULL,]
 
-count<-training$count
+#Get model matrices, splitting factors
+modelVars<-dummyVars(count~.,data=training)
 
-dummies<-dummyVars(count~.,data=training)
-
-training<-data.table(predict(dummies,training,na.action=na.omit))
-#training[,count:=count]
+training<-data.table(predict(modelVars,training,na.action=na.omit))
 
 fitControl <- trainControl(## 10-fold CV
   method = "repeatedcv",
@@ -35,11 +35,25 @@ rfGrid <-  expand.grid(mtry=(1:5)*4)
 
 set.seed(825)
 
-rfFit1 <- train(x=training, y=count,
+regRfFit1 <- train(x=training, y=regCount,
                  method = "rf",
                  trControl = fitControl,
                  tuneGrid=rfGrid)
 
-crossVal<-data.table(predict(dummies,cv,na.action=na.omit))
-predictedCount<-predict(rfFit1,newdata = crossVal)
+casRfFit1 <- train(x=training, y=casCount,
+                   method = "rf",
+                   trControl = fitControl,
+                   tuneGrid=rfGrid)
+
+#Get predicted registered
+crossVal<-data.table(predict(modelVars,cv,na.action=na.omit))
+preRegCount<-predict(regRfFit1,newdata = crossVal)
+
+#Get predicted casual
+preCasCount<-predict(casRfFit1,newdata = crossVal)
+
+#Add counts together
+predictedCount<-preRegCount+preCasCount
+
+#Get error score
 sqrt(sum((log(predictedCount+1)-log(cv$count+1))^2)/nrow(cv))
