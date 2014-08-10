@@ -19,8 +19,9 @@ source("Scripts/model.R")
 train=read.csv("Data/Raw Data/train.csv")
 test = read.csv("Data/Raw Data/test.csv")
 
-#get training output
-count=train$count
+#get training outputs
+regCount=train$registered
+casCount=train$casual
 
 #get test datetime
 dt=test$datetime
@@ -44,7 +45,10 @@ train<-data.table(predict(dummies,train,na.action=na.omit))
 test<-data.table(predict(dummyTest,test,na.action=na.omit))
 
 #Create model and predict values
-predictedCount<-predictCount(train,count,test)
+predictedReg<-predictCount(train,regCount,test)
+predictedCas<-predictCount(train,casCount,test)
+
+predictedCount<-predictedCas+predictedReg
 
 #Create output
 output = data.frame(datetime=dt,count=predictedCount)
