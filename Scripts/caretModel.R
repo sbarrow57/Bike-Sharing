@@ -13,6 +13,7 @@ cv <- bsData[!inTraining, ]
 
 regCount<-training$registered
 casCount<-training$casual
+count<-training$count
 
 #preprocess casual data
 training[,datetime:=NULL]
