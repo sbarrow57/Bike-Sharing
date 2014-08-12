@@ -19,32 +19,48 @@ count<-training$count
 training[,datetime:=NULL]
 training[,casual:=NULL]
 training[,registered:=NULL]
-training[,date:=NULL]
 
 #Get model matrices, splitting factors
 modelVars<-dummyVars(count~.,data=training)
 
 training<-data.table(predict(modelVars,training,na.action=na.omit))
 
+rmsle <- function (data, lev = NULL, model = NULL)                               
+{     
+  out<-sqrt(sum((log(data$pred+1)-log(data$obs+1))^2)/nrow(data))
+  names(out)<-"RMSLE"
+  out
+}
+
+
 fitControl <- trainControl(## 10-fold CV
   method = "repeatedcv",
   number =10,verboseIter=T,
   ## no repeats
-  repeats = 1)
+  repeats = 1,
+  summaryFunction=rmsle
+  )
 
-rfGrid <-  expand.grid(mtry=(1:5)*4)
+
+rfGrid <-  expand.grid(mtry=(1:6)*5)
 
 set.seed(825)
 
 regRfFit1 <- train(x=training, y=regCount,
                  method = "rf",
                  trControl = fitControl,
-                 tuneGrid=rfGrid)
+                 tuneGrid=rfGrid,
+                 metric="RMSLE",
+                 maximize=FALSE)
+
+set.seed(825)
 
 casRfFit1 <- train(x=training, y=casCount,
                    method = "rf",
                    trControl = fitControl,
-                   tuneGrid=rfGrid)
+                   tuneGrid=rfGrid,
+                   metric="RMSLE",
+                   maximize=FALSE)
 
 #Get predicted registered
 crossVal<-data.table(predict(modelVars,cv,na.action=na.omit))
