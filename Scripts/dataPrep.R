@@ -9,8 +9,15 @@ dataPrep<- function(rawData){
   rawData[,holiday:=factor(holiday)]
   
   #Split out date time column
-  rawData[,date:=factor(substr(datetime,1,10))]
-  rawData[,time:=factor(substr(datetime,12,19))]
+  datetime = ymd_hms(rawData$datetime)
+  hour = hour(datetime)
+  wday = wday(datetime)
+  month = month(datetime)
+  year = year(datetime)
+  rawData[,hour:=factor(hour)]
+  rawData[,wday:=factor(wday)]
+  rawData[,month:=factor(month)]
+  rawData[,year:=factor(year)]
   
   #return processed data
   rawData

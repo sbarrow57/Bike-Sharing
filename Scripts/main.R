@@ -33,10 +33,8 @@ test=dataPrep(test)
 train[,datetime:=NULL]
 train[,casual:=NULL]
 train[,registered:=NULL]
-train[,date:=NULL]
 
 test[,datetime:=NULL]
-test[,date:=NULL]
 
 dummies<-dummyVars(count~.,data=train)
 dummyTest<-dummyVars(~.,data=test)
